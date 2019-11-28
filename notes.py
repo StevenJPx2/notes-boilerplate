@@ -5,7 +5,9 @@ import os
 import json
 import re
 
-DEFAULT_PATH = os.popen('echo ~/Documents/Notes').read().split('\n')[0]
+def os_output(command): return os.popen(command).read().split('\n')
+
+DEFAULT_PATH = os_output('echo ~/Documents/Notes')[0]
 hidden_json_name = ".tags"
 os.makedirs(DEFAULT_PATH, exist_ok=True)
 
@@ -61,7 +63,7 @@ def main():
     tags_obj = setup_tags_obj()
     
     if args.type == 's':
-        for result in re.findall(args.filename, "\n".join(os.listdir(DEFAULT_PATH))):
+        for result in os_output(f'ls {DEFAULT_PATH} | grep {args.filename}')[:-1]:
             print(f"{DEFAULT_PATH}{os.sep}{result}")
             
     elif args.type == 't':
