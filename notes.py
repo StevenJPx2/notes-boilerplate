@@ -40,14 +40,13 @@ def setup_tags_obj():
 def create_parser():
     parser = ArgumentParser()
     parser.add_argument("type", 
-                        help='c - create a new note, s - search for notes with regex, t - show tags or search by tag, x - search through notes with context', 
-                        choices='cstx')
-    parser.add_argument("filename", help='Enter the name of the note if type is c, or search term if type is s|x', nargs="?")
+                        help='c - create a new note, e - edit an existing note, s - search for notes with regex, t - show tags or search by tag, x - search through notes with context', 
+                        choices='cestx')
+    parser.add_argument("filename", help='Enter the name of the note if type is c, search term if type is s|x, or tag if type is t', nargs="?")
     parser.add_argument("--subl", "-s", help='Open note in Sublime Text', action="store_true", default=True)
     parser.add_argument("--vscode", "-v", help='Open note in VSCode', action="store_true")
-    parser.add_argument("--tags", "-t", help='Add tags to note if type is c or search by tags if type is t')
+    parser.add_argument("--tags", "-t", help='Add tags to note if type is c')
     parser.add_argument("--mutually-exclusive", "-me", help='Searches for notes containing all the given tags [if type is t]', action="store_true")
-    
     
     return parser
     
@@ -61,18 +60,19 @@ def main():
         tags = None
         
     tags_obj = setup_tags_obj()
-    
+
     if args.type == 's':
         for result in os_output(f'ls {DEFAULT_PATH} | grep {args.filename}')[:-1]:
             print(f"{DEFAULT_PATH}{os.sep}{result}")
             
     elif args.type == 't':
-        if tags is None:
+        if args.filename is None:
             print(f"Tags:")
             for tag in tags_obj:
                 print(f"\t{tag}")
         
         else:
+            tags = args.filename.split(",")
             try:
                 if args.mutually_exclusive:
                     for tag in tags[:-1]:
@@ -109,20 +109,20 @@ def main():
             filename, filepath = filepath, None
             
         full_path = f"{filepath or DEFAULT_PATH}{os.sep}{filename}.{extension or 'txt'}"
-        
-        with open(full_path, 'w') as fp:
-            if tags is None: tags = ['misc']
-            fp.write(f'tags: {str(tags)[1:-1]}\n{"-"*50}\n\n')
-            
-        for key in tags:
-            value = tags_obj.get(key)
-            if value is None:
-                tags_obj[key] = [full_path]
-            else:
-                value.append(full_path)
-                tags_obj[key] = value
-            
-        json.dump(tags_obj, open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"), indent=4, sort_keys=True)
+        if args.type == 'c':    
+            with open(full_path, 'w') as fp:
+                if tags is None: tags = ['misc']
+                fp.write(f'tags: {str(tags)[1:-1]}\n{"-"*50}\n\n')
+                
+            for key in tags:
+                value = tags_obj.get(key)
+                if value is None:
+                    tags_obj[key] = [full_path]
+                else:
+                    value.append(full_path)
+                    tags_obj[key] = value
+                
+            json.dump(tags_obj, open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"), indent=4, sort_keys=True)
             
         if args.vscode:
             os.system(f'code {full_path}')
