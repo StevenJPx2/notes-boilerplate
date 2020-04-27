@@ -5,23 +5,27 @@ import os
 import json
 import re
 
-def os_output(command): return os.popen(command).read().split('\n')
 
-DEFAULT_PATH = os_output('echo ~/Documents/Notes')[0]
+def os_output(command):
+    return os.popen(command).read().split("\n")
+
+
+DEFAULT_PATH = os_output("echo ~/Documents/Notes")[0]
 hidden_json_name = ".tags"
 os.makedirs(DEFAULT_PATH, exist_ok=True)
 
 # ARGUMENTS
 
+
 def setup_tags_obj():
-    
+
     try:
         tags_obj = json.load(open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}"))
     except FileNotFoundError:
         tags_obj = {}
         with open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w") as fp:
             fp.write("{}")
-    
+
     temp_tags_obj = deepcopy(tags_obj)
     for key in tags_obj:
         for filepath in tags_obj[key]:
@@ -30,47 +34,69 @@ def setup_tags_obj():
                     del temp_tags_obj[key]
                 else:
                     temp_tags_obj[key].remove(filepath)
-    
+
     tags_obj = deepcopy(temp_tags_obj)
     del temp_tags_obj
-    json.dump(tags_obj, open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"), indent=4, sort_keys=True)
-    
+    json.dump(
+        tags_obj,
+        open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"),
+        indent=4,
+        sort_keys=True,
+    )
+
     return tags_obj
+
 
 def create_parser():
     parser = ArgumentParser()
-    parser.add_argument("type", 
-                        help='c - create a new note, e - edit an existing note, s - search for notes with regex, t - show tags or search by tag, x - search through notes with context', 
-                        choices='cestx')
-    parser.add_argument("filename", help='Enter the name of the note if type is c, search term if type is s|x, or tag if type is t', nargs="?")
-    parser.add_argument("--subl", "-s", help='Open note in Sublime Text', action="store_true", default=True)
-    parser.add_argument("--vscode", "-v", help='Open note in VSCode', action="store_true")
-    parser.add_argument("--tags", "-t", help='Add tags to note if type is c')
-    parser.add_argument("--mutually-exclusive", "-me", help='Searches for notes containing all the given tags [if type is t]', action="store_true")
-    
+    parser.add_argument(
+        "type",
+        help="c - create a new note, e - edit an existing note, s - search for notes with regex, t - show tags or search by tag, x - search through notes with context",
+        choices="cestx",
+    )
+    parser.add_argument(
+        "filename",
+        help="Enter the name of the note if type is c, search term if type is s|x, or tag if type is t",
+        nargs="?",
+    )
+    parser.add_argument(
+        "--subl", "-s", help="Open note in Sublime Text", action="store_true"
+    )
+    parser.add_argument(
+        "--vscode", "-v", help="Open note in VSCode", action="store_true"
+    )
+    parser.add_argument("--tags", "-t", help="Add tags to note if type is c")
+    parser.add_argument(
+        "--mutually-exclusive",
+        "-me",
+        help="Searches for notes containing all the given tags [if type is t]",
+        action="store_true",
+    )
+
     return parser
-    
+
+
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    
+
     try:
         tags = args.tags.split(",")
     except AttributeError:
         tags = None
-        
+
     tags_obj = setup_tags_obj()
 
-    if args.type == 's':
-        for result in os_output(f'ls {DEFAULT_PATH} | grep {args.filename}')[:-1]:
+    if args.type == "s":
+        for result in os_output(f"ls {DEFAULT_PATH} | grep {args.filename}")[:-1]:
             print(f"{DEFAULT_PATH}{os.sep}{result}")
-            
-    elif args.type == 't':
+
+    elif args.type == "t":
         if args.filename is None:
             print(f"Tags:")
             for tag in tags_obj:
                 print(f"\t{tag}")
-        
+
         else:
             tags = args.filename.split(",")
             try:
@@ -78,11 +104,14 @@ def main():
                     for tag in tags[:-1]:
                         print(tag.title(), end=", ")
                     print(tags[-1].title(), end="\n\n")
-                    
-                    for filepath in reduce(lambda x,y: x.intersection(y), [set(tags_obj[tag]) for tag in tags]):
+
+                    for filepath in reduce(
+                        lambda x, y: x.intersection(y),
+                        [set(tags_obj[tag]) for tag in tags],
+                    ):
                         print(f"\t{filepath}")
                     print(f"\n{'-'*50}")
-                        
+
                 else:
                     for tag in tags:
                         print(f"{tag.title()}\n")
@@ -93,27 +122,31 @@ def main():
                 print(f"error: {tags} do(es) not exist.")
                 raise SystemExit(1)
 
-    elif args.type == 'x':
+    elif args.type == "x":
         print("\nNot Implemented.")
 
     else:
         try:
-            filepath, extension = args.filename.split('.')
+            filepath, extension = args.filename.split(".")
         except ValueError:
             filepath, extension = args.filename, None
-            
+
         try:
             separated_filename = filepath.split(os.sep)
-            filepath, filename = f"{os.sep}".join(separated_filename[:-2]), separated_filename[-1]
+            filepath, filename = (
+                f"{os.sep}".join(separated_filename[:-2]),
+                separated_filename[-1],
+            )
         except ValueError:
             filename, filepath = filepath, None
-            
+
         full_path = f"{filepath or DEFAULT_PATH}{os.sep}{filename}.{extension or 'txt'}"
-        if args.type == 'c':    
-            with open(full_path, 'w') as fp:
-                if tags is None: tags = ['misc']
+        if args.type == "c":
+            with open(full_path, "w") as fp:
+                if tags is None:
+                    tags = ["misc"]
                 fp.write(f'tags: {str(tags)[1:-1]}\n{"-"*50}\n\n')
-                
+
             for key in tags:
                 value = tags_obj.get(key)
                 if value is None:
@@ -121,16 +154,21 @@ def main():
                 else:
                     value.append(full_path)
                     tags_obj[key] = value
-                
-            json.dump(tags_obj, open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"), indent=4, sort_keys=True)
-            
+
+            json.dump(
+                tags_obj,
+                open(f"{DEFAULT_PATH}{os.sep}{hidden_json_name}", "w"),
+                indent=4,
+                sort_keys=True,
+            )
+
         if args.vscode:
-            os.system(f'code {full_path}')
+            os.system(f"code {full_path}")
+        elif args.subl:
+            os.system(f"subl {full_path}")
         else:
-            os.system(f'subl {full_path}')
-    
-    
-    
+            os.system(f"v {full_path}")
+
 
 if __name__ == "__main__":
     main()
